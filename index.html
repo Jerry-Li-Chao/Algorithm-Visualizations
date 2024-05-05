@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Topological Sort Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+</head>
+<body>
+    <!-- add some text before input -->
+    <span>Enter number of courses: </span>
+    <input id="numCoursesInput" type="text" placeholder="4">
+    <span>Enter prerequisites: </span>
+    <input id="prerequisitesInput" type="text" placeholder="[[1,0],[2,0],[3,1],[3,2]]">
+    <button onclick="updateCourseData()">Update Data</button>
+    <br>
+    <span>*You are given an array prerequisites where prerequisites[0] = [0, 1] indicates that to take course 0 you have to first take course 1.</span>
+    <br>
+    <span>*Generate random prerequisites if no prerequisites is entered.</span>
+    <br>
+
+    <div id="canvasContainer"></div> 
+    <script src="sketch.js"></script>
+    
+</body>
+</html>
