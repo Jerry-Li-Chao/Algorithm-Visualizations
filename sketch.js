@@ -22,7 +22,7 @@ function setup() {
   nextButton.position(rect.left + 10, rect.top + 70);
   nextButton.mousePressed(nextStep);
 
-  let lastStepButton = createButton('Last Step');
+  let lastStepButton = createButton('Back 1 Step');
   lastStepButton.position(rect.left + 10, rect.top + 100);
   lastStepButton.mousePressed(lastStep);
 
@@ -156,7 +156,6 @@ function draw() {
         // if this node is in topological_sorted_order, draw a dashed line
         let dashed = topological_sorted_order.includes(i);
         drawArrow(courses[i], courses[j], 0, dashed);
-        // console.log(courses[i], courses[j], "dashed?: ", dashed);
     });
   }
 
@@ -231,6 +230,7 @@ function nextStep() {
 
 // Define restart and lastStep functions
 function restart() {
+  console.log("Restarted")
     zero_indegree_queue = [];
     topological_sorted_order = [];
     currentCourse = null;
@@ -283,7 +283,9 @@ function drawArrow(base, end, color, dashed = false) {
   
     if (dashed) {
       drawingContext.setLineDash([5, 5]);  // Sets the line style to dashed
-    }
+  } else {
+      drawingContext.setLineDash([]);  // Reset to solid line if not dashed
+  }
     
     line(base.x, base.y, sx, sy);
     translate(sx, sy);
