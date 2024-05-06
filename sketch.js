@@ -27,7 +27,7 @@ function setup() {
   lastStepButton.mousePressed(lastStep);
 
   // create a randomize node posiiton button
-    let randomizeButton = createButton('Randomize Node Position');
+    let randomizeButton = createButton('Randomize Position');
     randomizeButton.position(rect.left + 10, rect.top + 130);
     randomizeButton.mousePressed(randomizeNodePosition);
 
@@ -67,7 +67,6 @@ function randomizeNodePosition() {
 }
 
 function setupGraph() {
-  console.log("Setting up graph");
   adj_list = {};
   indegree = {};
   zero_indegree_queue = [];
@@ -76,7 +75,6 @@ function setupGraph() {
 
   // Initialize graph
 for (let i = 0; i < numCourses; i++) {
-  console.log(numCourses);
     adj_list[i] = [];
     let close = true;
     let x, y;
@@ -106,7 +104,6 @@ for (let i = 0; i < numCourses; i++) {
 
 
   prerequisites.forEach(pr => {
-    console.log(pr);
     let dest = pr[0];
     let src = pr[1];
     adj_list[src].push(dest);
@@ -129,27 +126,39 @@ for (let i = 0; i < numCourses; i++) {
 
 // Function to update course data based on user input
 function updateCourseData() {
-  console.log("Updating course data");
     let newNumCourses = parseInt(document.getElementById('numCoursesInput').value);
     let newPrerequisitesInput = document.getElementById('prerequisitesInput').value;
 
-  
+    let newPrerequisites;
+    console.log(newPrerequisitesInput);
     try {
-      let newPrerequisites = JSON.parse(newPrerequisitesInput);
-      if (!isNaN(newNumCourses) && newNumCourses > 0) {
+      newPrerequisites = JSON.parse(newPrerequisitesInput);
+      numCourses = newPrerequisites.length;
+      if(numCourses < 1 || numCourses > 30) {
+        alert('Number of courses must be between 1 and 30. Currently: ' + newPrerequisites.length + '.');
+        return;
+      }
+      prerequisites = newPrerequisites;
+      setupGraph();
+    } catch (e) {
+      if (!isNaN(newNumCourses) && newNumCourses > 0 && newNumCourses < 30) {
         numCourses = newNumCourses;
-        prerequisites = newPrerequisites;
+        // Check for valid prerequisites structure and range
+        if (!Array.isArray(newPrerequisites) || !newPrerequisites.every(pr => 
+            Array.isArray(pr) && pr.length === 2 && 
+            pr.every(n => !isNaN(n) && n >= 0 && n < numCourses))) {
+            // alert('Invalid prerequisites input. Generating random data instead.');
+            newPrerequisites = generateRandomDAG(numCourses);
+            prerequisites = newPrerequisites;
+        }
+        
         setupGraph(); // Re-setup the graph with new data
       } else {
-        alert('Please enter a valid number of courses');
+          alert('Please enter a valid number 1-30');
       }
-    } catch (e) {
-      // generate random data if input is invalid
-        numCourses = newNumCourses;
-        prerequisites = generateRandomDAG(numCourses);
-        setupGraph(); // Re-setup the graph with new data
     }
-  }
+  
+}
   
 
 function draw() {
@@ -227,7 +236,6 @@ function nextStep() {
       currentCourse = zero_indegree_queue[0];
     }
   } else {
-    // console.log("Topological Order: " + topological_sorted_order.join(", "));
     alert("No more courses to process.");
   }
   redraw(); // Update the visualization for each step
@@ -235,7 +243,6 @@ function nextStep() {
 
 // Define restart and lastStep functions
 function restart() {
-  console.log("Restarted")
     zero_indegree_queue = [];
     topological_sorted_order = [];
     currentCourse = null;
