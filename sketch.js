@@ -67,6 +67,7 @@ function randomizeNodePosition() {
 }
 
 function setupGraph() {
+  console.log("Setting up graph");
   adj_list = {};
   indegree = {};
   zero_indegree_queue = [];
@@ -75,6 +76,7 @@ function setupGraph() {
 
   // Initialize graph
 for (let i = 0; i < numCourses; i++) {
+  console.log(numCourses);
     adj_list[i] = [];
     let close = true;
     let x, y;
@@ -104,6 +106,7 @@ for (let i = 0; i < numCourses; i++) {
 
 
   prerequisites.forEach(pr => {
+    console.log(pr);
     let dest = pr[0];
     let src = pr[1];
     adj_list[src].push(dest);
@@ -121,10 +124,12 @@ for (let i = 0; i < numCourses; i++) {
     }
   }
   currentCourse = zero_indegree_queue[0];
+  redraw();
 }
 
 // Function to update course data based on user input
 function updateCourseData() {
+  console.log("Updating course data");
     let newNumCourses = parseInt(document.getElementById('numCoursesInput').value);
     let newPrerequisitesInput = document.getElementById('prerequisitesInput').value;
 
