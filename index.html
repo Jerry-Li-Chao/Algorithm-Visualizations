@@ -2,30 +2,55 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Topological Sort Visualization</title>
+    <title>Sorting Algo Visualization</title>
+    <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <script src="sketch.js"></script>
+    <script src="script.js"></script>
 </head>
 <body>
-    <!-- add some text before input -->
-    <span>Enter number of courses: </span>
-    <input id="numCoursesInput" type="text" placeholder="4">
+    <button class="startButton" onclick="startSorting()">Start</button>
+    <!-- <button class="pauseButton" onclick="pauseSorting()">Pause</button> -->
+    <button class="resetButton" onclick="resetArray()">Reset</button>
     <br>
+    <button class="algorithmButton active" id="QuickSort" onclick="changeAlgorithm('QuickSort')">QuickSort</button>
+    <button class="algorithmButton" id="MergeSort" onclick="changeAlgorithm('MergeSort')">MergeSort</button>
+    <button class="algorithmButton" id="InsertionSort" onclick="changeAlgorithm('InsertionSort')">InsertionSort</button>
+    <button class="algorithmButton" id="SelectionSort" onclick="changeAlgorithm('SelectionSort')">SelectionSort</button>
+    <button class="algorithmButton" id="BubbleSort" onclick="changeAlgorithm('BubbleSort')">BubbleSort</button>
+    <button class="algorithmButton" id="HeapSort"onclick="changeAlgorithm('HeapSort')">HeapSort</button>
+    <button class="algorithmButton" id="RadixSort" onclick="changeAlgorithm('RadixSort')">RadixSort</button>
     <br>
-    <span>Enter prerequisites: </span>
-    <input id="prerequisitesInput" type="text" placeholder="[[1,0],[2,0],[3,1],[3,2]]">
+    <!-- Change Delay Slider -->
+    <input type="range" min="1" max="100" value="10" class="slider" id="delaySlider" oninput="changeDelay()">
+    <label for="delaySlider">Delay: <span id="delayValue">10</span>ms</label>
     <br>
-    <span>*Random prerequisites are generated if prerequisites are left blank, and only number is entered.</span>
+    <div id="canvasContainer"></div>
+    <div id="algorithmExplanation">
+        <h2>QuickSort</h2>
+        <h3>How it works</h3>
+        <ol>
+          <li>Choose a pivot element from the array (typically the last element).</li>
+          <li>Partition the array into two halves, placing elements less than the pivot to its left and elements greater than the pivot to its right.</li>
+          <li>Recursively apply the same steps to the left and right sub-arrays surrounding the pivot.</li>
+          <li>Combine the sorted sub-arrays to form the final sorted array (this step is inherently completed by the structure of the recursion and does not require actual merging).</li>
+        </ol>
+        <h3>Complexity</h3>
+        <ul>
+          <li><strong>Time Complexity:</strong> Average case O(n log n), Worst case O(n²).</li>
+          <li><strong>Space Complexity:</strong> O(log n) due to recursive stack space.</li>
+        </ul>
+        <h3>Real-Life Use Cases</h3>
+        <ul>
+          <li>Used in systems where average performance matters, such as in database sorting and multimedia applications.</li>
+        </ul>
+        <h3>Efficiency Analysis</h3>
+        <ul>
+          <li><strong>Efficient:</strong> Because it sorts in place and has a good average-case time complexity.</li>
+          <li><strong>Not Efficient:</strong> Poor choice in worst-case scenarios, where the chosen pivot regularly is an extremum, leading to skewed partitions.</li>
+        </ul>
+    </div>
     <br>
-    <span>*An array prerequisites where prerequisites[0] = [0, 1] indicates that before taking course 0 you have to first take course 1.</span>
-    <br>
-    <br>
-    <button onclick="updateCourseData()">Update Data</button>
-    <br>
-    <br>
-    
-
-    <div id="canvasContainer"></div> 
-    <script src="sketch.js"></script>
     
 </body>
 </html>

@@ -1,406 +1,397 @@
-let numCourses = 5;
-let prerequisites = [[1,0],[2,0],[3,1],[3,2], [1,4]];
-let adj_list = {};
-let indegree = {};
-let zero_indegree_queue = [];
-let topological_sorted_order = [];
-let courses = [];
-let currentCourse = null;
+let values = [];
+let states = [];
+let w = 10;  // Width of the bars
+let currentSort = 'QuickSort';  // Default sort
+let totalValues;
+let sorting = false;
+let paused = true;
+let delay = 10;  // Delay in milliseconds
+let canvas = null;
+
+function changeDelay() {
+    let slider = document.getElementById('delaySlider');
+    let delayValue = document.getElementById('delayValue');
+    delay = slider.value;  // Update the global delay variable used in your sorting algorithms
+    delayValue.innerHTML = delay;  // Update the display
+}
+
 
 function setup() {
-  createCanvas(800, 600);
+  canvas = createCanvas(windowWidth * 3 / 4, windowHeight / 2);
 
-  // button position should be relative to the top-left corner of the canvas
-  let canvasDiv = document.getElementById('canvasContainer');
-  let rect = canvasDiv.getBoundingClientRect();  // Get the position and size of the canvas container
+  let container = select('#canvasContainer');
+  // Attach the canvas to the container element
+  canvas.parent(container);
 
-  let restartButton = createButton('Restart');
-  restartButton.position(rect.left + 10, rect.top + 40);
-  restartButton.mousePressed(restart);
-
-  let nextButton = createButton('Next Step');
-  nextButton.position(rect.left + 10, rect.top + 70);
-  nextButton.mousePressed(nextStep);
-
-  let lastStepButton = createButton('Back 1 Step');
-  lastStepButton.position(rect.left + 10, rect.top + 100);
-  lastStepButton.mousePressed(lastStep);
-
-  // create a randomize node posiiton button
-    let randomizeButton = createButton('Randomize Position');
-    randomizeButton.position(rect.left + 10, rect.top + 130);
-    randomizeButton.mousePressed(randomizeNodePosition);
-
-
-  setupGraph();
+  totalValues = floor(width / w);
+  resetArray();
+  noLoop();
 }
 
-function randomizeNodePosition() {
-    courses = [];
-    for (let i = 0; i < numCourses; i++) {
-        let close = true;
-        let x, y;
-    
-        while (close) {
-            x = random(width * 0.2, width * 0.8);
-            y = random(height * 0.2, height * 0.8);
-            close = false;
-    
-            // Check the distance with all existing nodes
-            for (let j = 0; j < courses.length; j++) {
-                let dx = courses[j].x - x;
-                let dy = courses[j].y - y;
-                let distance = sqrt(dx * dx + dy * dy);
-    
-                // Ensure each node is at least twice the diameter apart (to avoid overlapping)
-                if (distance < 2 * 15 * 2) { // 15 is the radius, *2 for diameter, *2 for minimum non-overlapping distance
-                    close = true;
-                    break;
-                }
-            }
-        }
-    
-        // Add the course with a valid position
-        courses.push({ id: i, x: x, y: y });
+function clearValandStates() {
+    values = new Array(totalValues);
+    for (let i = 0; i < values.length; i++) {
+      values[i] = random(height);
+      states[i] = -1;
     }
-    redraw(); // Redraw the canvas with new node positions
 }
 
-function setupGraph() {
-  adj_list = {};
-  indegree = {};
-  zero_indegree_queue = [];
-  topological_sorted_order = [];
-  courses = [];
-
-  // Initialize graph
-for (let i = 0; i < numCourses; i++) {
-    adj_list[i] = [];
-    let close = true;
-    let x, y;
-
-    while (close) {
-        x = random(width * 0.2, width * 0.8);
-        y = random(height * 0.2, height * 0.8);
-        close = false;
-
-        // Check the distance with all existing nodes
-        for (let j = 0; j < courses.length; j++) {
-            let dx = courses[j].x - x;
-            let dy = courses[j].y - y;
-            let distance = sqrt(dx * dx + dy * dy);
-
-            // Ensure each node is at least twice the diameter apart (to avoid overlapping)
-            if (distance < 2 * 15 * 2) { // 15 is the radius, *2 for diameter, *2 for minimum non-overlapping distance
-                close = true;
-                break;
-            }
-        }
-    }
-
-    // Add the course with a valid position
-    courses.push({ id: i, x: x, y: y });
-}
-
-
-  prerequisites.forEach(pr => {
-    let dest = pr[0];
-    let src = pr[1];
-    adj_list[src].push(dest);
-    // what does this line do?
-    // It increments the indegree of the destination node by 1
-    // what is || 0
-    // It is a short-circuit operator that assigns 0 if indegree[dest] is undefined
-    indegree[dest] = (indegree[dest] || 0) + 1;
-  });
-
-  // Find all courses with no incoming edge
-  for (let k = 0; k < numCourses; k++) {
-    if (!indegree[k]) {
-      zero_indegree_queue.push(k);
-    }
+function resetArray() {
+    clearValandStates();
+    noLoop();
+    sorting = false;
+    paused = true;
+    clearValandStates();
+    redraw();
   }
-  currentCourse = zero_indegree_queue[0];
-  redraw();
-}
-
-// Function to update course data based on user input
-function updateCourseData() {
-    let newNumCourses = parseInt(document.getElementById('numCoursesInput').value);
-    let newPrerequisitesInput = document.getElementById('prerequisitesInput').value;
-
-    let newPrerequisites;
-    console.log(newPrerequisitesInput);
-    try {
-      newPrerequisites = JSON.parse(newPrerequisitesInput);
-      numCourses = newPrerequisites.length;
-      if(numCourses < 1 || numCourses > 30) {
-        alert('Number of courses must be between 1 and 30. Currently: ' + newPrerequisites.length + '.');
-        return;
-      }
-      prerequisites = newPrerequisites;
-      setupGraph();
-    } catch (e) {
-      if (!isNaN(newNumCourses) && newNumCourses > 0 && newNumCourses < 30) {
-        numCourses = newNumCourses;
-        // Check for valid prerequisites structure and range
-        if (!Array.isArray(newPrerequisites) || !newPrerequisites.every(pr => 
-            Array.isArray(pr) && pr.length === 2 && 
-            pr.every(n => !isNaN(n) && n >= 0 && n < numCourses))) {
-            // alert('Invalid prerequisites input. Generating random data instead.');
-            newPrerequisites = generateRandomDAG(numCourses);
-            prerequisites = newPrerequisites;
-        }
-        
-        setupGraph(); // Re-setup the graph with new data
-      } else {
-          alert('Please enter a valid number 1-30');
-      }
-    }
-  
-}
-  
 
 function draw() {
-  background(240);
-
-  // Draw edges
-  for (let i = 0; i < numCourses; i++) {
-    adj_list[i].forEach(j => {
-        // if this node is in topological_sorted_order, draw a dashed line
-        let dashed = topological_sorted_order.includes(i);
-        drawArrow(courses[i], courses[j], 0, dashed);
-    });
+  background(0);
+  for (let i = 0; i < values.length; i++) {
+    stroke(0);
+    fill(255);
+    if (states[i] == 0) {
+      fill('#E0777D');  // Red for active elements
+    } else if (states[i] == 1) {
+      fill('#D6FFB7');  // Green for sorted elements
+    }
+    rect(i * w, height - values[i], w, values[i]);
   }
-
-courses.forEach(course => {
-    fill(200);
-    strokeWeight(1); // Adjust stroke weight for better visibility
-
-    if (topological_sorted_order.includes(course.id)) {
-        setDashedStroke(); // Set dashed stroke for courses in the sorted order
-        stroke(0, 100, 255); // Optionally, change stroke color to highlight
-        fill(240);
-    } else {
-        resetStroke(); // Reset to solid stroke
-        stroke(0); // Default stroke color (black)
-    }
-
-    if (zero_indegree_queue.includes(course.id)) {
-        fill(255, 0, 0); // Fill red if the course is in the zero indegree queue
-    }
-    if (currentCourse === course.id) {
-        fill(0, 255, 0); // Fill green if it's the current course being processed
-    }
-
-    ellipse(course.x, course.y, 30); // Draw the node
-    fill(0); // Set fill color for text
-    noStroke(); // Disable stroke for text for clarity
-    text(course.id, course.x - 5, course.y + 5); // Draw the course ID centered on the node
-});
-
-
-  // Display the zero_indegree_queue
-  displayQueue();
-  displayNextNodetoRemove();
-
-  displayTopologicalOrder();
-
-  // only draw once
-    noLoop();
 }
 
-function setDashedStroke() {
-    drawingContext.setLineDash([5, 10]);  // Set dash pattern - [dash length, space length]
-}
-
-function resetStroke() {
-    drawingContext.setLineDash([]);  // Reset to solid line
-}
-
-
-function nextStep() {
-  if (zero_indegree_queue.length > 0) {
-    let vertex = zero_indegree_queue.shift();
-    topological_sorted_order.push(vertex);
-    if (adj_list[vertex]) {
-      adj_list[vertex].forEach(neighbor => {
-        indegree[neighbor]--;
-        if (indegree[neighbor] === 0) {
-          zero_indegree_queue.push(neighbor);
-        }
-      });
-    }
-    // currentCouse should be the first element in the zero_indegree_queue
-    if (zero_indegree_queue.length > 0) {
-      currentCourse = zero_indegree_queue[0];
-    }
-  } else {
-    alert("No more courses to process.");
-  }
-  redraw(); // Update the visualization for each step
-}
-
-// Define restart and lastStep functions
-function restart() {
-    zero_indegree_queue = [];
-    topological_sorted_order = [];
-    currentCourse = null;
-  
-    // Reinitialize the indegree and zero_indegree_queue
-    indegree = {};
-    prerequisites.forEach(pr => {
-      let dest = pr[0];
-      let src = pr[1];
-      indegree[dest] = (indegree[dest] || 0) + 1;
-    });
-  
-    for (let k = 0; k < numCourses; k++) {
-      if (!indegree[k]) {
-        zero_indegree_queue.push(k);
+function startSorting() {
+    if (!sorting) {
+      sorting = true;
+      paused = false;
+      loop();  // Resume drawing
+      switch (currentSort) {
+        case 'QuickSort':
+          quickSort(values, 0, values.length - 1).then(() => {
+            sorting = false;
+            noLoop();
+          });
+          break;
+        case 'MergeSort':
+          mergeSort(values, 0, values.length - 1).then(() => {
+            sorting = false;
+            noLoop();
+          });
+          break;
+        case 'InsertionSort':
+          insertionSort(values).then(() => {
+            sorting = false;
+            noLoop();
+          });
+          break;
+        case 'HeapSort':
+            heapSort(values).then(() => {
+                sorting = false;
+                noLoop();
+            });
+            break;
+        case 'BubbleSort':
+            bubbleSort(values).then(() => {
+                sorting = false;
+                noLoop();
+            });
+            break;
+        case 'SelectionSort':
+            selectionSort(values).then(() => {
+                sorting = false;
+                noLoop();
+            });
+            break;
+        case 'RadixSort':
+            radixSort(values).then(() => {
+                sorting = false;
+                noLoop();
+            });
+            break;
       }
     }
-    currentCourse = zero_indegree_queue[0];
-    redraw();
-  }
-  
-  function lastStep() {
-    if (topological_sorted_order.length > 0) {
-      let lastCourse = topological_sorted_order.pop();
-      currentCourse = lastCourse;
-      // Re-adjust the indegrees and zero_indegree_queue based on last step
-      if (adj_list[lastCourse]) {
-        adj_list[lastCourse].forEach(neighbor => {
-          indegree[neighbor]++;
-          if (indegree[neighbor] === 1) {
-            zero_indegree_queue.splice(zero_indegree_queue.indexOf(neighbor), 1);
-          }
-        });
-      }
-      zero_indegree_queue.push(lastCourse);
-    }
-    redraw();
   }
 
-function drawArrow(base, end, color, dashed = false) {
-    push();
-    stroke(color);
-    fill(color);
-    let angle = atan2(end.y - base.y, end.x - base.x);
-    let d = dist(base.x, base.y, end.x, end.y);
-    let radius = 15;  // Node radius
-    let offset = radius + 2; // Distance to stop arrow before it hits the node
-    let sx = base.x + (d - offset) * cos(angle);
-    let sy = base.y + (d - offset) * sin(angle);
-  
-    if (dashed) {
-      drawingContext.setLineDash([5, 5]);  // Sets the line style to dashed
-  } else {
-      drawingContext.setLineDash([]);  // Reset to solid line if not dashed
+  function pauseSorting() {
+    if (sorting && !paused) {
+        noLoop();
+        paused = true;
+    }
   }
+  
+  function changeAlgorithm(algo) {
+    console.log(sorting, paused);
+    if(!sorting) {
+        currentSort = algo;
+        resetArray();
+        updateExplanation(currentSort);  // Update the text based on the selected algorithm
+        // remove active class from the current button, and add it to the new button
+        let currentActive = select('.active');
+        currentActive.removeClass('active');
+        let newActive = select(`#${algo}`);
+        newActive.addClass('active');
+    }
+    else {
+        alert('Please wait for the current sorting to finish!');
+    }
     
-    line(base.x, base.y, sx, sy);
-    translate(sx, sy);
-    rotate(angle);
-    triangle(0, 0, -7, -3, -7, 3);
-    pop();
-  }
-  
-  
-  function displayQueue() {
-    fill(0);
-    textSize(16);
-    text('zero_indegree_queue:', 220, 30);
-    let x = 250;  // Starting x position
-    zero_indegree_queue.forEach(course => {
-      if(course === currentCourse) fill(0, 255, 0);
-      else fill(255, 0, 0);
-      ellipse(x, 50, 30); // Draw circle for each node in the queue
-      fill(0);
-      text(course, x - 5, 55);
-      x += 40;  // Increment x to space nodes horizontally
-    });
   }
 
-  function displayNextNodetoRemove() {
-    fill(0);
-    textSize(16);
-    text('About to remove and add to final order:', 420, 30);
-    let x = 450;  // Starting x position
-    zero_indegree_queue.forEach(course => {
-      if(course === currentCourse) {
-        fill(0, 255, 0);
-        ellipse(x, 50, 30); // Draw circle for each node in the queue
-        fill(0);
-        text(course, x - 5, 55);
-        x += 40;  // Increment x to space nodes horizontally
+  async function swap(arr, a, b, slowDownMultiplier = 1) {
+    await sleep(delay * slowDownMultiplier);
+    let temp = arr[a];
+    arr[a] = arr[b];
+    arr[b] = temp;
+  }
+
+// MERGE SORT
+async function mergeSort(arr, l, r) {
+    if(paused) {
+        clearValandStates();
+        return;
+    }
+    if (l >= r) return;
+    let m = l + Math.floor((r - l) / 2);
+    await mergeSort(arr, l, m);
+    await mergeSort(arr, m + 1, r);
+    await merge(arr, l, m, r);
+  }
+  
+  async function merge(arr, l, m, r) {
+    let n1 = m - l + 1;
+    let n2 = r - m;
+    let L = new Array(n1);
+    let R = new Array(n2);
+  
+    for (let i = 0; i < n1; i++) {
+      L[i] = arr[l + i];
+      states[l + i] = 0; // Active state
+    }
+    for (let j = 0; j < n2; j++) {
+      R[j] = arr[m + 1 + j];
+      states[m + 1 + j] = 0; // Active state
+    }
+  
+    let i = 0, j = 0, k = l;
+    while (i < n1 && j < n2) {
+      if (L[i] <= R[j]) {
+        arr[k] = L[i];
+        i++;
+      } else {
+        arr[k] = R[j];
+        j++;
       }
-    });
+      states[k] = 1; // Sorted state
+      await sleep(delay);
+      k++;
+    }
+  
+    while (i < n1) {
+      arr[k] = L[i];
+      states[k] = 1; // Sorted state
+      i++;
+      k++;
+      await sleep(delay);
+    }
+  
+    while (j < n2) {
+      arr[k] = R[j];
+      states[k] = 1; // Sorted state
+      j++;
+      k++;
+      await sleep(delay);
+    }
+  }
+
+// INSERTION SORT
+async function insertionSort(arr) {
+    for (let i = 1; i < arr.length; i++) {
+      let key = arr[i];
+      let j = i - 1;
+      states[i] = 0; // Mark the key as active
+      while (j >= 0 && arr[j] > key) {
+        arr[j + 1] = arr[j];
+        states[j + 1] = 0; // Active state for shifting elements
+        await sleep(delay * 0.5);
+        j = j - 1;
+      }
+      arr[j + 1] = key;
+      for (let k = 0; k <= i; k++) {
+        states[k] = 1; // Sorted state up to the current index
+      }
+      if (paused) {
+        clearValandStates();
+        return;
+      }
+    }
   }
   
 
-  function displayTopologicalOrder() {
-    fill(0);
-    textSize(16);
-    text('Topological Order:', 20, height - 40);
-    textSize(14);
-    let orderText = topological_sorted_order.join(", ");
-    text(orderText, 20, height - 20);
+// QUICK SORT   
+async function quickSort(arr, start, end) {
+    if (start >= end) {
+      return;
+    }
+    let index = await partition(arr, start, end);
+    states[index] = -1;
+    if (paused) {
+      clearValandStates();
+      return;
+    }
+    await Promise.all([
+      quickSort(arr, start, index - 1),
+      quickSort(arr, index + 1, end)
+    ]);
   }
   
+  async function partition(arr, start, end) {
+    for (let i = start; i < end; i++) {
+      states[i] = 1;
+    }
+    let pivotValue = arr[end];
+    let pivotIndex = start;
+    states[pivotIndex] = 0;
+    for (let i = start; i < end; i++) {
+      if (arr[i] < pivotValue) {
+        await swap(arr, i, pivotIndex, 3);
+        states[pivotIndex] = -1;
+        pivotIndex++;
+        states[pivotIndex] = 0;
+      }
+    }
+    await swap(arr, pivotIndex, end, 3);
+    for (let i = start; i < end; i++) {
+      if (i != pivotIndex) {
+        states[i] = -1;
+      }
+    }
+    return pivotIndex;
+  }
 
-  function generateRandomDAG(numCourses) {
-    let edges = new Set();
-    // Create a simple chain to ensure no orphans
-    for (let i = 1; i < numCourses; i++) {
-        edges.add(i + "," + (i - 1));
+  
+  function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+  
+// HEAP SORT
+async function heapSort(arr) {
+    let n = arr.length;
+
+    // Build heap (rearrange array)
+    for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
+        await heapify(arr, n, i);
     }
 
-    // Function to check if adding an edge creates a cycle
-    function createsCycle(edges, start, end, numCourses) {
-        let graph = Array.from({length: numCourses}, () => []);
-        edges.forEach(edge => {
-            let [a, b] = edge.split(",").map(Number);
-            graph[a].push(b);
-        });
-        // Add the new edge to check for cycle
-        graph[start].push(end);
+    // One by one extract an element from heap
+    for (let i = n - 1; i > 0; i--) {
+        // Move current root to end
+        await swap(arr, 0, i, 2);
+        states[i] = 1; // Mark as sorted
+        // call max heapify on the reduced heap
+        await heapify(arr, i, 0);
+        if (paused) {
+            clearValandStates();
+            return;
+        }
+    }
+    states[0] = 1; // Sort the last element
+}
 
-        let visited = Array(numCourses).fill(false);
-        let recStack = Array(numCourses).fill(false);
+async function heapify(arr, n, i) {
+    let largest = i;
+    let l = 2 * i + 1;
+    let r = 2 * i + 2;
+    states[i] = 0; // Mark as active
 
-        function dfs(v) {
-            if (!visited[v]) {
-                visited[v] = true;
-                recStack[v] = true;
-                for (let neighbor of graph[v]) {
-                    if (!visited[neighbor] && dfs(neighbor)) {
-                        return true;
-                    } else if (recStack[neighbor]) {
-                        return true;
-                    }
-                }
+    // If left child is larger than root
+    if (l < n && arr[l] > arr[largest]) {
+        largest = l;
+    }
+
+    // If right child is larger than largest so far
+    if (r < n && arr[r] > arr[largest]) {
+        largest = r;
+    }
+
+    // If largest is not root
+    if (largest != i) {
+        await swap(arr, i, largest);
+        // Recursively heapify the affected sub-tree
+        await heapify(arr, n, largest);
+    }
+    states[i] = -1; // Reset state
+}
+
+// BUBBLE SORT
+async function bubbleSort(arr) {
+    let n = arr.length;
+    for (let i = 0; i < n - 1; i++) {
+        for (let j = 0; j < n - i - 1; j++) {
+            if (paused) {
+                clearValandStates();
+                return;
             }
-            recStack[v] = false;
-            return false;
+            states[j] = 0; // Mark as active
+            if (arr[j] > arr[j + 1]) {
+                await swap(arr, j, j + 1, 0.25);
+            }
+            states[j] = -1; // Reset state
+        }
+        states[n - i - 1] = 1; // Mark as sorted
+    }
+}
+
+// SELECTION SORT
+async function selectionSort(arr) {
+    let n = arr.length;
+    for (let i = 0; i < n - 1; i++) {
+        let min_idx = i;
+        for (let j = i + 1; j < n; j++) {
+            states[j] = 0; // Mark as active
+            if (arr[j] < arr[min_idx]) {
+                min_idx = j;
+            }
+            await sleep(delay * 0.2); // To visualize comparison
+            states[j] = -1; // Reset state
+        }
+        await swap(arr, min_idx, i, 0.2);
+        states[i] = 1; // Mark as sorted
+        if (paused) {
+            clearValandStates();
+            return;
+        }
+    }
+    states[n - 1] = 1; // Sort the last element
+}
+
+// RADIX SORT
+async function radixSort(arr) {
+    const maxNum = Math.max(...arr) * 10;
+    let digitPlace = 1;
+
+    while (digitPlace < maxNum) {
+        const buckets = [...Array(10)].map(() => []);
+        for (let i = 0; i < arr.length; i++) {
+            const digit = Math.floor((arr[i] / digitPlace) % 10);
+            buckets[digit].push(arr[i]);
+            states[i] = 0; // Mark as active
+            await sleep(delay);
+            states[i] = -1; // Reset state
         }
 
-        for (let node = 0; node < numCourses; node++) {
-            if (!visited[node] && dfs(node)) {
-                return true;
+        // Collect the numbers back into arr[]
+        let idx = 0;
+        for (let b = 0; b < 10; b++) {
+            for (let i = 0; i < buckets[b].length; i++) {
+                arr[idx] = buckets[b][i];
+                states[idx] = 1; // Mark as sorted for visualization
+                idx++;
             }
         }
-        return false;
-    }
-
-    // Add more edges randomly
-    while (edges.size < numCourses * 1.5) {  // Adjust the multiplier for more or fewer edges
-        let a = Math.floor(Math.random() * numCourses);
-        let b = Math.floor(Math.random() * numCourses);
-        if (a !== b && !edges.has(a + "," + b) && !createsCycle(edges, a, b, numCourses)) {
-            edges.add(a + "," + b);
+        if (paused) {
+            clearValandStates();
+            return;
         }
+        digitPlace *= 10;
+        await sleep(delay);
     }
-
-    return Array.from(edges).map(edge => edge.split(",").map(Number));
 }
