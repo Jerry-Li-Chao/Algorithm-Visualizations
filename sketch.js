@@ -1,397 +1,268 @@
-let values = [];
-let states = [];
-let w = 10;  // Width of the bars
-let currentSort = 'QuickSort';  // Default sort
-let totalValues;
-let sorting = false;
-let paused = true;
-let delay = 10;  // Delay in milliseconds
-let canvas = null;
+let boids = [];
+let selectedBoid = null;
+let showVision = true;
+let boidCount = 150;
 
-function changeDelay() {
-    let slider = document.getElementById('delaySlider');
-    let delayValue = document.getElementById('delayValue');
-    delay = slider.value;  // Update the global delay variable used in your sorting algorithms
-    delayValue.innerHTML = delay;  // Update the display
-}
-
+// Sliders
+let separationSlider, alignmentSlider, cohesionSlider;
+let visionRadiusSlider, visionAngleSlider;
 
 function setup() {
-  canvas = createCanvas(windowWidth * 3 / 4, windowHeight / 2);
+  createCanvas(windowWidth * 0.98, windowHeight * 0.98);
 
-  let container = select('#canvasContainer');
-  // Attach the canvas to the container element
-  canvas.parent(container);
+  // Create sliders
+  separationSlider = createSlider(0, 5, 1.7, 0.1);
+  alignmentSlider = createSlider(0, 5, 1.3, 0.1);
+  cohesionSlider = createSlider(0, 5, 1.3, 0.1);
+  visionRadiusSlider = createSlider(10, 200, 80, 1);
+  visionAngleSlider = createSlider(10, 360, 240, 1);
 
-  totalValues = floor(width / w);
-  resetArray();
-  noLoop();
-}
+  // Position sliders
+  separationSlider.position(10, 10);
+  alignmentSlider.position(10, 40);
+  cohesionSlider.position(10, 70);
+  visionRadiusSlider.position(300, 10);
+  visionAngleSlider.position(300, 40);
 
-function clearValandStates() {
-    values = new Array(totalValues);
-    for (let i = 0; i < values.length; i++) {
-      values[i] = random(height);
-      states[i] = -1;
-    }
-}
-
-function resetArray() {
-    clearValandStates();
-    noLoop();
-    sorting = false;
-    paused = true;
-    clearValandStates();
-    redraw();
+  // Create boids
+  for (let i = 0; i < boidCount; i++) {
+    boids.push(new Boid(random(width), random(height)));
   }
+}
 
 function draw() {
-  background(0);
-  for (let i = 0; i < values.length; i++) {
-    stroke(0);
-    fill(255);
-    if (states[i] == 0) {
-      fill('#E0777D');  // Red for active elements
-    } else if (states[i] == 1) {
-      fill('#D6FFB7');  // Green for sorted elements
-    }
-    rect(i * w, height - values[i], w, values[i]);
+  background(30);
+
+  // Labels for sliders
+  fill(255);
+  textSize(12);
+  text(`Separation: ${separationSlider.value()}`, 160, 25);
+  text(`Alignment: ${alignmentSlider.value()}`, 160, 55);
+  text(`Cohesion: ${cohesionSlider.value()}`, 160, 85);
+  text(`Vision Radius: ${visionRadiusSlider.value()}`, 460, 25);
+  text(`Vision Angle: ${visionAngleSlider.value()}`, 460, 55);
+
+  for (let boid of boids) {
+    boid.edges();
+    boid.flock(boids);
+    boid.update();
+    boid.show();
   }
 }
 
-function startSorting() {
-    if (!sorting) {
-      sorting = true;
-      paused = false;
-      loop();  // Resume drawing
-      switch (currentSort) {
-        case 'QuickSort':
-          quickSort(values, 0, values.length - 1).then(() => {
-            sorting = false;
-            noLoop();
-          });
-          break;
-        case 'MergeSort':
-          mergeSort(values, 0, values.length - 1).then(() => {
-            sorting = false;
-            noLoop();
-          });
-          break;
-        case 'InsertionSort':
-          insertionSort(values).then(() => {
-            sorting = false;
-            noLoop();
-          });
-          break;
-        case 'HeapSort':
-            heapSort(values).then(() => {
-                sorting = false;
-                noLoop();
-            });
-            break;
-        case 'BubbleSort':
-            bubbleSort(values).then(() => {
-                sorting = false;
-                noLoop();
-            });
-            break;
-        case 'SelectionSort':
-            selectionSort(values).then(() => {
-                sorting = false;
-                noLoop();
-            });
-            break;
-        case 'RadixSort':
-            radixSort(values).then(() => {
-                sorting = false;
-                noLoop();
-            });
-            break;
+function mousePressed() {
+  let found = false;
+  for (let boid of boids) {
+    if (dist(mouseX, mouseY, boid.position.x, boid.position.y) < 10) {
+      selectedBoid = boid;
+      found = true;
+      break;
+    }
+  }
+
+  // If clicked not on boid, apply attraction
+  if (!found) {
+    for (let boid of boids) {
+      let d = dist(mouseX, mouseY, boid.position.x, boid.position.y);
+      if (d < 100) {
+        let force = p5.Vector.sub(createVector(mouseX, mouseY), boid.position);
+        force.setMag(map(d, 0, 100, 0.5, 0.1));
+        boid.applyForce(force);
       }
     }
   }
-
-  function pauseSorting() {
-    if (sorting && !paused) {
-        noLoop();
-        paused = true;
-    }
-  }
-  
-  function changeAlgorithm(algo) {
-    console.log(sorting, paused);
-    if(!sorting) {
-        currentSort = algo;
-        resetArray();
-        updateExplanation(currentSort);  // Update the text based on the selected algorithm
-        // remove active class from the current button, and add it to the new button
-        let currentActive = select('.active');
-        currentActive.removeClass('active');
-        let newActive = select(`#${algo}`);
-        newActive.addClass('active');
-    }
-    else {
-        alert('Please wait for the current sorting to finish!');
-    }
-    
-  }
-
-  async function swap(arr, a, b, slowDownMultiplier = 1) {
-    await sleep(delay * slowDownMultiplier);
-    let temp = arr[a];
-    arr[a] = arr[b];
-    arr[b] = temp;
-  }
-
-// MERGE SORT
-async function mergeSort(arr, l, r) {
-    if(paused) {
-        clearValandStates();
-        return;
-    }
-    if (l >= r) return;
-    let m = l + Math.floor((r - l) / 2);
-    await mergeSort(arr, l, m);
-    await mergeSort(arr, m + 1, r);
-    await merge(arr, l, m, r);
-  }
-  
-  async function merge(arr, l, m, r) {
-    let n1 = m - l + 1;
-    let n2 = r - m;
-    let L = new Array(n1);
-    let R = new Array(n2);
-  
-    for (let i = 0; i < n1; i++) {
-      L[i] = arr[l + i];
-      states[l + i] = 0; // Active state
-    }
-    for (let j = 0; j < n2; j++) {
-      R[j] = arr[m + 1 + j];
-      states[m + 1 + j] = 0; // Active state
-    }
-  
-    let i = 0, j = 0, k = l;
-    while (i < n1 && j < n2) {
-      if (L[i] <= R[j]) {
-        arr[k] = L[i];
-        i++;
-      } else {
-        arr[k] = R[j];
-        j++;
-      }
-      states[k] = 1; // Sorted state
-      await sleep(delay);
-      k++;
-    }
-  
-    while (i < n1) {
-      arr[k] = L[i];
-      states[k] = 1; // Sorted state
-      i++;
-      k++;
-      await sleep(delay);
-    }
-  
-    while (j < n2) {
-      arr[k] = R[j];
-      states[k] = 1; // Sorted state
-      j++;
-      k++;
-      await sleep(delay);
-    }
-  }
-
-// INSERTION SORT
-async function insertionSort(arr) {
-    for (let i = 1; i < arr.length; i++) {
-      let key = arr[i];
-      let j = i - 1;
-      states[i] = 0; // Mark the key as active
-      while (j >= 0 && arr[j] > key) {
-        arr[j + 1] = arr[j];
-        states[j + 1] = 0; // Active state for shifting elements
-        await sleep(delay * 0.5);
-        j = j - 1;
-      }
-      arr[j + 1] = key;
-      for (let k = 0; k <= i; k++) {
-        states[k] = 1; // Sorted state up to the current index
-      }
-      if (paused) {
-        clearValandStates();
-        return;
-      }
-    }
-  }
-  
-
-// QUICK SORT   
-async function quickSort(arr, start, end) {
-    if (start >= end) {
-      return;
-    }
-    let index = await partition(arr, start, end);
-    states[index] = -1;
-    if (paused) {
-      clearValandStates();
-      return;
-    }
-    await Promise.all([
-      quickSort(arr, start, index - 1),
-      quickSort(arr, index + 1, end)
-    ]);
-  }
-  
-  async function partition(arr, start, end) {
-    for (let i = start; i < end; i++) {
-      states[i] = 1;
-    }
-    let pivotValue = arr[end];
-    let pivotIndex = start;
-    states[pivotIndex] = 0;
-    for (let i = start; i < end; i++) {
-      if (arr[i] < pivotValue) {
-        await swap(arr, i, pivotIndex, 3);
-        states[pivotIndex] = -1;
-        pivotIndex++;
-        states[pivotIndex] = 0;
-      }
-    }
-    await swap(arr, pivotIndex, end, 3);
-    for (let i = start; i < end; i++) {
-      if (i != pivotIndex) {
-        states[i] = -1;
-      }
-    }
-    return pivotIndex;
-  }
-
-  
-  function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-  
-// HEAP SORT
-async function heapSort(arr) {
-    let n = arr.length;
-
-    // Build heap (rearrange array)
-    for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
-        await heapify(arr, n, i);
-    }
-
-    // One by one extract an element from heap
-    for (let i = n - 1; i > 0; i--) {
-        // Move current root to end
-        await swap(arr, 0, i, 2);
-        states[i] = 1; // Mark as sorted
-        // call max heapify on the reduced heap
-        await heapify(arr, i, 0);
-        if (paused) {
-            clearValandStates();
-            return;
-        }
-    }
-    states[0] = 1; // Sort the last element
 }
 
-async function heapify(arr, n, i) {
-    let largest = i;
-    let l = 2 * i + 1;
-    let r = 2 * i + 2;
-    states[i] = 0; // Mark as active
-
-    // If left child is larger than root
-    if (l < n && arr[l] > arr[largest]) {
-        largest = l;
-    }
-
-    // If right child is larger than largest so far
-    if (r < n && arr[r] > arr[largest]) {
-        largest = r;
-    }
-
-    // If largest is not root
-    if (largest != i) {
-        await swap(arr, i, largest);
-        // Recursively heapify the affected sub-tree
-        await heapify(arr, n, largest);
-    }
-    states[i] = -1; // Reset state
+function keyPressed() {
+  if (key === "v" || key === "V") {
+    showVision = !showVision;
+  }
 }
 
-// BUBBLE SORT
-async function bubbleSort(arr) {
-    let n = arr.length;
-    for (let i = 0; i < n - 1; i++) {
-        for (let j = 0; j < n - i - 1; j++) {
-            if (paused) {
-                clearValandStates();
-                return;
-            }
-            states[j] = 0; // Mark as active
-            if (arr[j] > arr[j + 1]) {
-                await swap(arr, j, j + 1, 0.25);
-            }
-            states[j] = -1; // Reset state
-        }
-        states[n - i - 1] = 1; // Mark as sorted
+// ------------------------ Boid Class ------------------------
+
+class Boid {
+  constructor(x, y) {
+    this.position = createVector(x, y);
+    this.velocity = p5.Vector.random2D();
+    this.velocity.setMag(random(2, 4));
+    this.acceleration = createVector();
+    this.maxForce = 0.3;
+    this.maxSpeed = 4;
+    this.color = color(random(100, 200), random(100, 200), 255);
+  }
+
+  edges() {
+    if (this.position.x > width) this.position.x = 0;
+    if (this.position.x < 0) this.position.x = width;
+    if (this.position.y > height) this.position.y = 0;
+    if (this.position.y < 0) this.position.y = height;
+  }
+
+  align(boids) {
+    let perceptionRadius = visionRadiusSlider.value();
+    let perceptionAngle = radians(visionAngleSlider.value());
+    let steering = createVector();
+    let total = 0;
+
+    for (let other of boids) {
+      let d = dist(
+        this.position.x,
+        this.position.y,
+        other.position.x,
+        other.position.y
+      );
+      let angle = p5.Vector.angleBetween(
+        this.velocity,
+        p5.Vector.sub(other.position, this.position)
+      );
+      if (
+        other !== this &&
+        d < perceptionRadius &&
+        angle < perceptionAngle / 2
+      ) {
+        steering.add(other.velocity);
+        total++;
+      }
     }
-}
-
-// SELECTION SORT
-async function selectionSort(arr) {
-    let n = arr.length;
-    for (let i = 0; i < n - 1; i++) {
-        let min_idx = i;
-        for (let j = i + 1; j < n; j++) {
-            states[j] = 0; // Mark as active
-            if (arr[j] < arr[min_idx]) {
-                min_idx = j;
-            }
-            await sleep(delay * 0.2); // To visualize comparison
-            states[j] = -1; // Reset state
-        }
-        await swap(arr, min_idx, i, 0.2);
-        states[i] = 1; // Mark as sorted
-        if (paused) {
-            clearValandStates();
-            return;
-        }
+    if (total > 0) {
+      steering.div(total);
+      steering.setMag(this.maxSpeed);
+      steering.sub(this.velocity);
+      steering.limit(this.maxForce);
     }
-    states[n - 1] = 1; // Sort the last element
-}
+    return steering;
+  }
 
-// RADIX SORT
-async function radixSort(arr) {
-    const maxNum = Math.max(...arr) * 10;
-    let digitPlace = 1;
+  cohesion(boids) {
+    let perceptionRadius = visionRadiusSlider.value();
+    let perceptionAngle = radians(visionAngleSlider.value());
+    let steering = createVector();
+    let total = 0;
 
-    while (digitPlace < maxNum) {
-        const buckets = [...Array(10)].map(() => []);
-        for (let i = 0; i < arr.length; i++) {
-            const digit = Math.floor((arr[i] / digitPlace) % 10);
-            buckets[digit].push(arr[i]);
-            states[i] = 0; // Mark as active
-            await sleep(delay);
-            states[i] = -1; // Reset state
-        }
-
-        // Collect the numbers back into arr[]
-        let idx = 0;
-        for (let b = 0; b < 10; b++) {
-            for (let i = 0; i < buckets[b].length; i++) {
-                arr[idx] = buckets[b][i];
-                states[idx] = 1; // Mark as sorted for visualization
-                idx++;
-            }
-        }
-        if (paused) {
-            clearValandStates();
-            return;
-        }
-        digitPlace *= 10;
-        await sleep(delay);
+    for (let other of boids) {
+      let d = dist(
+        this.position.x,
+        this.position.y,
+        other.position.x,
+        other.position.y
+      );
+      let angle = p5.Vector.angleBetween(
+        this.velocity,
+        p5.Vector.sub(other.position, this.position)
+      );
+      if (
+        other !== this &&
+        d < perceptionRadius &&
+        angle < perceptionAngle / 2
+      ) {
+        steering.add(other.position);
+        total++;
+      }
     }
+    if (total > 0) {
+      steering.div(total);
+      steering.sub(this.position);
+      steering.setMag(this.maxSpeed);
+      steering.sub(this.velocity);
+      steering.limit(this.maxForce);
+    }
+    return steering;
+  }
+
+  separation(boids) {
+    let perceptionRadius = visionRadiusSlider.value();
+    let perceptionAngle = radians(visionAngleSlider.value());
+    let steering = createVector();
+    let total = 0;
+
+    for (let other of boids) {
+      let d = dist(
+        this.position.x,
+        this.position.y,
+        other.position.x,
+        other.position.y
+      );
+      let angle = p5.Vector.angleBetween(
+        this.velocity,
+        p5.Vector.sub(other.position, this.position)
+      );
+      if (
+        other !== this &&
+        d < perceptionRadius &&
+        angle < perceptionAngle / 2
+      ) {
+        let diff = p5.Vector.sub(this.position, other.position);
+        diff.div(d * d); // stronger when closer
+        steering.add(diff);
+        total++;
+      }
+    }
+    if (total > 0) {
+      steering.div(total);
+      steering.setMag(this.maxSpeed);
+      steering.sub(this.velocity);
+      steering.limit(this.maxForce);
+    }
+    return steering;
+  }
+
+  applyForce(force) {
+    this.acceleration.add(force);
+  }
+
+  flock(boids) {
+    let sep = this.separation(boids);
+    let ali = this.align(boids);
+    let coh = this.cohesion(boids);
+
+    sep.mult(separationSlider.value());
+    ali.mult(alignmentSlider.value());
+    coh.mult(cohesionSlider.value());
+
+    this.applyForce(sep);
+    this.applyForce(ali);
+    this.applyForce(coh);
+  }
+
+  update() {
+    this.position.add(this.velocity);
+    this.velocity.add(this.acceleration);
+    this.velocity.limit(this.maxSpeed);
+    this.acceleration.mult(0);
+  }
+
+  show() {
+    push();
+    translate(this.position.x, this.position.y);
+    rotate(this.velocity.heading() + HALF_PI);
+    noStroke();
+    fill(this.color);
+    beginShape();
+    vertex(0, -10);
+    vertex(-5, 10);
+    vertex(5, 10);
+    endShape(CLOSE);
+    pop();
+
+    if (this === selectedBoid) {
+      stroke(255, 255, 0);
+      strokeWeight(1);
+      noFill();
+      ellipse(this.position.x, this.position.y, 20, 20);
+
+      if (showVision) {
+        noFill();
+        stroke(100, 150);
+        arc(
+          this.position.x,
+          this.position.y,
+          visionRadiusSlider.value() * 2,
+          visionRadiusSlider.value() * 2,
+          this.velocity.heading() - radians(visionAngleSlider.value()) / 2,
+          this.velocity.heading() + radians(visionAngleSlider.value()) / 2
+        );
+      }
+    }
+  }
 }
